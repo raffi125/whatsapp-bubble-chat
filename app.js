@@ -1,7 +1,18 @@
-let mediaCache = {}; // Menyimpan Blob URL file media dari ZIP
-let globalRawText = ""; // Menyimpan teks mentah untuk kebutuhan re-render
+let mediaCache = {}; 
+let globalRawText = ""; 
+let lastSenderName = null;
 
-// Fungsi mengambil data alias dari UI Form ke dalam Objek {}
+const senderColors = {};
+const colorPalette = ['#20a082', '#3571df', '#e56424', '#b32cc6', '#df3550', '#748b13', '#169ca4'];
+
+function getSenderColor(name) {
+    if (!senderColors[name]) {
+        const randomIndex = Object.keys(senderColors).length % colorPalette.length;
+        senderColors[name] = colorPalette[randomIndex];
+    }
+    return senderColors[name];
+}
+
 function getActiveAliases() {
     const aliases = {};
     const rows = document.querySelectorAll('.alias-row');
@@ -15,32 +26,32 @@ function getActiveAliases() {
     return aliases;
 }
 
-// Handler tombol tambah baris input alias
+// Handler UI Tambah Row Alias
 document.getElementById('addAliasBtn').addEventListener('click', function() {
     const container = document.getElementById('aliasInputs');
     const newRow = document.createElement('div');
-    newRow.className = 'alias-row';
+    newRow.className = 'alias-row grid grid-cols-2 gap-2 bg-[#f0f2f5] p-2 rounded-lg border border-[#e9edef]';
     newRow.innerHTML = `
-        <input type="text" placeholder="Nomor HP" class="input-phone">
-        <input type="text" placeholder="Nama Panggilan" class="input-name">
+        <input type="text" placeholder="Nomor / Teks Asli" class="input-phone w-full bg-white text-xs rounded border border-[#e9edef] px-2 py-1.5 focus:outline-none focus:border-[#00a884]">
+        <input type="text" placeholder="Nama Alias" class="input-name w-full bg-white text-xs rounded border border-[#e9edef] px-2 py-1.5 focus:outline-none focus:border-[#00a884]">
     `;
     container.appendChild(newRow);
 });
 
-// Handler tombol Terapkan Alias untuk re-render tanpa upload ulang
+// Handler Render Ulang Alias
 document.getElementById('applyAliasBtn').addEventListener('click', function() {
     if (globalRawText) {
         renderChatContainer(globalRawText);
     }
 });
 
-// Handler Upload File
+// Handler File Upload (.zip / .txt)
 document.getElementById('uploadFile').addEventListener('change', async function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const chatArea = document.getElementById('chatArea');
-    chatArea.innerHTML = '<div class="system-bubble">Sedang memproses file...</div>';
+    chatArea.innerHTML = '<div class="system-bubble">Sedang memproses file, mohon tunggu...</div>';
     
     mediaCache = {}; 
     globalRawText = ""; 
@@ -48,7 +59,6 @@ document.getElementById('uploadFile').addEventListener('change', async function(
     if (file.name.endsWith('.zip')) {
         try {
             const zip = await JSZip.loadAsync(file);
-
             for (let filename in zip.files) {
                 if (filename.endsWith('.txt') && !filename.startsWith('__MACOSX')) {
                     globalRawText = await zip.files[filename].async("text");
@@ -57,14 +67,13 @@ document.getElementById('uploadFile').addEventListener('change', async function(
                     mediaCache[filename] = URL.createObjectURL(blob);
                 }
             }
-
             if (globalRawText) {
                 renderChatContainer(globalRawText);
             } else {
-                chatArea.innerHTML = '<div class="system-bubble">File .txt tidak ditemukan di dalam ZIP.</div>';
+                chatArea.innerHTML = '<div class="system-bubble">Gagal menemukan file .txt di dalam ZIP.</div>';
             }
         } catch (err) {
-            chatArea.innerHTML = '<div class="system-bubble">Gagal memproses file ZIP.</div>';
+            chatArea.innerHTML = '<div class="system-bubble">Gagal membuka berkas ZIP.</div>';
             console.error(err);
         }
     } else {
@@ -80,34 +89,38 @@ document.getElementById('uploadFile').addEventListener('change', async function(
 function renderChatContainer(rawText) {
     const chatArea = document.getElementById('chatArea');
     chatArea.innerHTML = ''; 
+    lastSenderName = null; // Reset status ekor bubble
 
     const lines = rawText.split('\n');
     let currentTrackingDate = null;
-    
-    // Ambil data alias dinamis yang diisi user di UI saat ini
     const activeAliases = getActiveAliases();
 
     lines.forEach(line => {
+        if (!line.trim()) return;
         const parsedData = parseChatLine(line, activeAliases);
 
         if (parsedData) {
-            if (parsedData.date !== currentTrackingDate) {
-                createDateDividerElement(parsedData.date);
-                currentTrackingDate = parsedData.date;
-            }
+            if (parsedData.type === 'system' || parsedData.type === 'chat') {
+                // Gambar tanggal jika hari berganti
+                if (parsedData.date !== currentTrackingDate) {
+                    createDateDividerElement(parsedData.date);
+                    currentTrackingDate = parsedData.date;
+                    lastSenderName = null; // Reset ekor setiap ganti hari baru
+                }
 
-            if (parsedData.type === 'system') {
-                createSystemMsgElement(parsedData.text);
-            } else if (parsedData.type === 'chat') {
-                buildChatBubbleElement(parsedData);
+                if (parsedData.type === 'system') {
+                    createSystemMsgElement(parsedData.text);
+                    lastSenderName = null;
+                } else if (parsedData.type === 'chat') {
+                    buildChatBubbleElement(parsedData);
+                }
+            } else if (parsedData.type === 'multiline') {
+                appendLastMessageLine(parsedData.text);
             }
-        } else {
-            appendLastMessageLine(line.trim());
         }
     });
 }
 
-// Fungsi pembantu pembuatan elemen DOM HTML (Date, System, Bubble)
 function createDateDividerElement(dateLabel) {
     const area = document.getElementById('chatArea');
     const div = document.createElement('div');
@@ -116,7 +129,6 @@ function createDateDividerElement(dateLabel) {
     area.appendChild(div);
 }
 
-// ... (Fungsi createSystemMsgElement, buildChatBubbleElement, appendLastMessageLine sama seperti script sebelumnya) ...
 function createSystemMsgElement(text) {
     const area = document.getElementById('chatArea');
     const div = document.createElement('div');
@@ -128,11 +140,19 @@ function createSystemMsgElement(text) {
 function buildChatBubbleElement(data) {
     const area = document.getElementById('chatArea');
     const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${data.alignment}`;
+    
+    let tailClass = "";
+    if (data.sender !== lastSenderName) {
+        tailClass = data.alignment === 'outgoing' ? 'tail-out' : 'tail-in';
+        lastSenderName = data.sender;
+    }
+    
+    bubble.className = `chat-bubble ${data.alignment} ${tailClass}`;
 
-    if (data.alignment === 'incoming') {
+    if (data.alignment === 'incoming' && tailClass !== "") {
         const title = document.createElement('div');
         title.className = 'sender-title';
+        title.style.color = getSenderColor(data.sender);
         title.innerText = data.sender;
         bubble.appendChild(title);
     }
@@ -163,7 +183,7 @@ function buildChatBubbleElement(data) {
         let caption = data.message.replace(filename, '').replace('(file terlampir)', '').replace('<Media tidak disertakan>', '').trim();
         if (caption) {
             const capDiv = document.createElement('div');
-            capDiv.style.marginTop = "5px";
+            capDiv.style.marginTop = "4px";
             capDiv.innerText = caption;
             msgContent.appendChild(capDiv);
         }
@@ -179,7 +199,7 @@ function buildChatBubbleElement(data) {
     if (data.isEdited) {
         const editTag = document.createElement('span');
         editTag.className = 'tag-edited';
-        editTag.innerText = '(diedit)';
+        editTag.innerText = '(diedit) ';
         meta.prepend(editTag);
     }
     bubble.appendChild(meta);
@@ -190,14 +210,14 @@ function buildChatBubbleElement(data) {
 
 function appendLastMessageLine(text) {
     const area = document.getElementById('chatArea');
-    const lastMessage = area.querySelector('.chat-bubble:last-child .message-content');
-    if (lastMessage) {
-        if (lastMessage.querySelector('.chat-media')) {
+    const lastBubble = area.querySelector('.chat-bubble:last-child .message-content');
+    if (lastBubble) {
+        if (lastBubble.querySelector('.chat-media')) {
             const txtDiv = document.createElement('div');
             txtDiv.innerText = text;
-            lastMessage.appendChild(txtDiv);
+            lastBubble.appendChild(txtDiv);
         } else {
-            lastMessage.innerText += `\n${text}`;
+            lastBubble.innerText += `\n${text}`;
         }
     }
 }
