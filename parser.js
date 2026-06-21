@@ -1,82 +1,63 @@
-// parser.js
-// Fungsi: parse WhatsApp exported .txt ke array pesan {timestamp, author, text, raw}
-// Catatan: regex menangani beberapa format tanggal umum. Tidak sempurna untuk semua lokal,
-// tapi bekerja untuk banyak export standar (dd/mm/yyyy, mm/dd/yy, dll).
-
-(function(global){
-  function tryParseDate(dateStr, timeStr){
-    // Gabungkan dan coba Date parsing heuristik:
-    const s = dateStr + ' ' + timeStr;
-    // Replace dots with slashes, remove ordinal th/st/nd jika ada
-    const cleaned = s.replace(/(\d)(st|nd|rd|th)/g, '$1').replace(/\./g, '/');
-    const d = new Date(cleaned);
-    if(!isNaN(d)) return d.toISOString();
-    // Fallback: just return raw string
-    return cleaned;
-  }
-
-  function parseWhatsAppExport(text){
-    const lines = text.split(/\r?\n/);
-    const messages = [];
-    // Pattern: tanggal, waktu - rest
-    // contoh: 23/6/2024, 21:15 - Name: pesan...
-    const headerRegex = /^(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[APMapm]{2})?)\s-\s(.*)$/;
-    let current = null;
-
-    for (let i = 0; i < lines.length; i++){
-      const line = lines[i];
-      const m = line.match(headerRegex);
-      if (m){
-        // new message
-        if (current) messages.push(current);
-        const datePart = m[1].trim();
-        const timePart = m[2].trim();
-        let rest = m[3];
-        // rest often "Name: message" but could be "Messages to this chat..." (system) or "Name: " missing
-        const authorSep = rest.indexOf(':');
-        let author = null;
-        let textPart = rest;
-        if (authorSep !== -1){
-          author = rest.slice(0, authorSep).trim();
-          textPart = rest.slice(authorSep + 1).trim();
-        } else {
-          // system message (no author)
-          author = null;
-          textPart = rest.trim();
+// Fungsi untuk mengganti nomor HP di notifikasi sistem/grup berdasarkan input user
+function replaceSystemTextWithAlias(systemText, phoneAliases) {
+    let updatedText = systemText;
+    for (const [phone, alias] of Object.entries(phoneAliases)) {
+        if (phone.trim() && updatedText.includes(phone)) {
+            updatedText = updatedText.replaceAll(phone, alias);
         }
-
-        current = {
-          timestamp: tryParseDate(datePart, timePart),
-          date_raw: datePart + ', ' + timePart,
-          author: author,
-          text: textPart,
-          raw: line
-        };
-      } else {
-        // continuation line of previous message (multi-line message)
-        if (current){
-          if (line.trim() === '') {
-            current.text += '\n';
-          } else {
-            current.text += '\n' + line;
-          }
-        } else {
-          // if file starts with BOM/garbage lines, skip or attach as system
-          const sys = {
-            timestamp: null,
-            date_raw: null,
-            author: null,
-            text: line,
-            raw: line
-          };
-          messages.push(sys);
-        }
-      }
     }
-    if (current) messages.push(current);
-    return messages;
-  }
+    return updatedText;
+}
 
-  // expose
-  global.parseWhatsAppExport = parseWhatsAppExport;
-})(window);
+// Fungsi utama membedah baris teks chat dengan parameter aliases dinamis
+function parseChatLine(line, phoneAliases = {}) {
+    line = line.trim();
+    if (!line) return null;
+
+    // Regex standar ekspor WhatsApp: "DD/MM/YY HH.MM - Pengirim: Pesan"
+    const pattern = /^(\d{2}\/\d{2}\/\d{2})\s(\d{2}\.\d{2})\s-\s([^:]+)(?::\s(.*))?$/;
+    const parsed = line.match(pattern);
+
+    if (parsed) {
+        const date = parsed[1];
+        const time = parsed[2];
+        let sender = parsed[3];
+        let message = parsed[4] || '';
+
+        // Jika tidak ada pesan (:), anggap sebagai pesan sistem grup
+        if (!parsed[4] && !sender.includes(':')) {
+            return {
+                type: 'system',
+                date,
+                text: replaceSystemTextWithAlias(sender, phoneAliases)
+            };
+        }
+
+        // Cek indikator edit pesan
+        let isEdited = false;
+        if (message.includes('<Pesan ini diedit>')) {
+            isEdited = true;
+            message = message.replace('<Pesan ini diedit>', '').trim();
+        }
+
+        // Terapkan nama alias secara dinamis jika ada di objek inputan user
+        if (phoneAliases[sender]) {
+            sender = phoneAliases[sender];
+        }
+
+        // Klasifikasi posisi bubble (kanan jika Anda/Raffi)
+        const isMyChat = (sender.toLowerCase() === 'anda' || sender.toLowerCase().includes('raffi'));
+        
+        return {
+            type: 'chat',
+            date,
+            time,
+            sender,
+            message,
+            alignment: isMyChat ? 'outgoing' : 'incoming',
+            isEdited
+        };
+    }
+
+    return null;
+}
