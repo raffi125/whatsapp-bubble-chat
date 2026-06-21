@@ -4,7 +4,6 @@
     background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
     background-repeat: repeat;
     background-size: auto;
-    opacity: 0.99;
 }
 
 /* Custom Scrollbar */
@@ -17,7 +16,7 @@
 }
 ::-webkit-scrollbar-thumb {
     background: rgba(11, 20, 26, 0.2);
-    border-radius: 0;
+    border-radius: 9999px;
 }
 
 /* Pemisah Tanggal Tengah */
@@ -28,9 +27,10 @@
     font-size: 11px;
     padding: 6px 12px;
     border-radius: 7.5px;
-    box-shadow: 0 1px 0.5px rgba(11,20,26,.08);
+    box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.08);
     margin: 12px 0;
     text-transform: uppercase;
+    flex-shrink: 0; /* Mencegah elemen menciut saat scroll */
 }
 
 /* Bubble Info Sistem */
@@ -41,100 +41,102 @@
     font-size: 11px;
     padding: 5px 12px;
     border-radius: 7.5px;
-    box-shadow: 0 1px 0.5px rgba(11,20,26,.05);
+    box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.05);
     max-width: 85%;
     text-align: center;
     margin: 4px 0;
     line-height: 1.4;
-    border-bottom: 1px solid rgba(0,0,0,0.02);
+    flex-shrink: 0;
 }
 
 /* Desain Bubble Chat Utama WhatsApp */
 .chat-bubble {
     max-width: 65%;
-    padding: 6px 7px 8px 9px;
+    padding: 6px 8px 6px 10px; /* Diperlebar sedikit agar teks tidak mepet */
     border-radius: 7.5px;
     position: relative;
-    box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+    box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
     display: flex;
     flex-direction: column;
-    margin-bottom: 2px;
+    margin-bottom: 4px; /* Diberi jarak antar baris bubble */
+    flex-shrink: 0;
 }
 
 /* Bubble Kiri (Teman) */
 .chat-bubble.incoming {
     background-color: #ffffff;
     align-self: flex-start;
+    margin-left: 8px;
 }
 
 /* Bubble Kanan (Kamu) */
 .chat-bubble.outgoing {
     background-color: #d9fdd3;
     align-self: flex-end;
+    margin-right: 8px;
 }
 
-/* Ekor Lancip di Atas Samping Obrolan Baru (Jika Pengirim Berubah) */
+/* Ekor Lancip di Atas Samping Obrolan */
 .chat-bubble.tail-in::before {
     content: '';
     position: absolute;
     top: 0;
-    left: -8px;
+    left: -6px;
     width: 0;
     height: 0;
     border-style: solid;
-    border-width: 0 8px 13px 0;
+    border-width: 0 6px 10px 0;
     border-color: transparent #ffffff transparent transparent;
 }
 .chat-bubble.tail-out::before {
     content: '';
     position: absolute;
     top: 0;
-    right: -8px;
+    right: -6px;
     width: 0;
     height: 0;
     border-style: solid;
-    border-width: 13px 8px 0 0;
+    border-width: 10px 6px 0 0;
     border-color: #d9fdd3 transparent transparent transparent;
 }
 
-/* Konten Isi Komponen */
+/* Komponen Konten */
 .sender-title {
     font-size: 12.8px;
     font-weight: 600;
-    margin-bottom: 2px;
-    cursor: pointer;
+    margin-bottom: 1px;
 }
 
+/* Layouting inline-block agar jam menempel manis di kanan bawah teks */
 .message-content {
     font-size: 14.2px;
     color: #111b21;
     line-height: 1.4;
     white-space: pre-wrap;
     word-break: break-word;
+    padding-right: 45px; /* Memberi ruang kosong di kanan agar tidak menabrak jam */
+    position: relative;
 }
 
 .chat-media {
     max-width: 100%;
     max-height: 300px;
     border-radius: 6px;
-    margin: 3px 0;
+    margin: 4px 0;
     display: block;
 }
 
-/* Jam Pengiriman */
+/* Jam Pengiriman Absolute di Pojok Kanan Bawah */
 .bubble-meta {
     font-size: 11px;
     color: #667781;
-    align-self: flex-end;
-    margin-top: -4px;
-    margin-left: 16px;
-    min-height: 15px;
+    position: absolute;
+    right: 7px;
+    bottom: 4px;
     display: flex;
     align-items: center;
     gap: 3px;
-    float: right;
-    position: relative;
-    bottom: -4px;
+    user-select: none;
 }
 
 .tag-edited {
