@@ -26,11 +26,10 @@ function getActiveAliases() {
     return aliases;
 }
 
-// Handler UI Tambah Row Alias
 document.getElementById('addAliasBtn').addEventListener('click', function() {
     const container = document.getElementById('aliasInputs');
     const newRow = document.createElement('div');
-    newRow.className = 'alias-row grid grid-cols-2 gap-2 bg-[#f0f2f5] p-2 rounded-lg border border-[#e9edef]';
+    newRow.className = 'alias-row grid grid-cols-2 gap-2 bg-[#f0f2f5] p-2 rounded-lg border border-[#e9edef] flex-shrink-0';
     newRow.innerHTML = `
         <input type="text" placeholder="Nomor / Teks Asli" class="input-phone w-full bg-white text-xs rounded border border-[#e9edef] px-2 py-1.5 focus:outline-none focus:border-[#00a884]">
         <input type="text" placeholder="Nama Alias" class="input-name w-full bg-white text-xs rounded border border-[#e9edef] px-2 py-1.5 focus:outline-none focus:border-[#00a884]">
@@ -38,14 +37,12 @@ document.getElementById('addAliasBtn').addEventListener('click', function() {
     container.appendChild(newRow);
 });
 
-// Handler Render Ulang Alias
 document.getElementById('applyAliasBtn').addEventListener('click', function() {
     if (globalRawText) {
         renderChatContainer(globalRawText);
     }
 });
 
-// Handler File Upload (.zip / .txt)
 document.getElementById('uploadFile').addEventListener('change', async function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -80,7 +77,6 @@ document.getElementById('uploadFile').addEventListener('change', async function(
         const reader = new FileReader();
         reader.onload = function(e) {
             globalRawText = e.target.result;
-            // CRITICAL FIX: Panggil fungsi render container, jangan gunakan chatArea.innerText = e.target.result!
             renderChatContainer(globalRawText);
         };
         reader.readAsText(file);
@@ -89,7 +85,7 @@ document.getElementById('uploadFile').addEventListener('change', async function(
 
 function renderChatContainer(rawText) {
     const chatArea = document.getElementById('chatArea');
-    chatArea.innerHTML = ''; // Kosongkan text mentah bawaan
+    chatArea.innerHTML = ''; 
     lastSenderName = null; 
 
     const lines = rawText.split('\n');
@@ -119,6 +115,9 @@ function renderChatContainer(rawText) {
             }
         }
     });
+
+    // KUNCI UTAMA: Mengembalikan posisi pandangan ke obrolan paling awal setelah render
+    chatArea.scrollTop = 0; 
 }
 
 function createDateDividerElement(dateLabel) {
@@ -176,7 +175,14 @@ function buildChatBubbleElement(data) {
         } else {
             const img = document.createElement('img');
             img.src = fileUrl;
-            img.className = 'chat-media';
+            
+            // Deteksi stiker .webp
+            if (filename.toLowerCase().endsWith('.webp')) {
+                img.className = 'chat-sticker';
+                bubble.classList.add('is-sticker');
+            } else {
+                img.className = 'chat-media';
+            }
             msgContent.appendChild(img);
         }
         
@@ -205,14 +211,13 @@ function buildChatBubbleElement(data) {
     bubble.appendChild(meta);
 
     area.appendChild(bubble);
-    area.scrollTop = area.scrollHeight;
 }
 
 function appendLastMessageLine(text) {
     const area = document.getElementById('chatArea');
     const lastBubble = area.querySelector('.chat-bubble:last-child .message-content');
     if (lastBubble) {
-        if (lastBubble.querySelector('.chat-media')) {
+        if (lastBubble.querySelector('.chat-media') || lastBubble.querySelector('.chat-sticker')) {
             const txtDiv = document.createElement('div');
             txtDiv.innerText = text;
             lastBubble.appendChild(txtDiv);
