@@ -80,6 +80,7 @@ document.getElementById('uploadFile').addEventListener('change', async function(
         const reader = new FileReader();
         reader.onload = function(e) {
             globalRawText = e.target.result;
+            // CRITICAL FIX: Panggil fungsi render container, jangan gunakan chatArea.innerText = e.target.result!
             renderChatContainer(globalRawText);
         };
         reader.readAsText(file);
@@ -88,8 +89,8 @@ document.getElementById('uploadFile').addEventListener('change', async function(
 
 function renderChatContainer(rawText) {
     const chatArea = document.getElementById('chatArea');
-    chatArea.innerHTML = ''; 
-    lastSenderName = null; // Reset status ekor bubble
+    chatArea.innerHTML = ''; // Kosongkan text mentah bawaan
+    lastSenderName = null; 
 
     const lines = rawText.split('\n');
     let currentTrackingDate = null;
@@ -101,11 +102,10 @@ function renderChatContainer(rawText) {
 
         if (parsedData) {
             if (parsedData.type === 'system' || parsedData.type === 'chat') {
-                // Gambar tanggal jika hari berganti
                 if (parsedData.date !== currentTrackingDate) {
                     createDateDividerElement(parsedData.date);
                     currentTrackingDate = parsedData.date;
-                    lastSenderName = null; // Reset ekor setiap ganti hari baru
+                    lastSenderName = null; 
                 }
 
                 if (parsedData.type === 'system') {
