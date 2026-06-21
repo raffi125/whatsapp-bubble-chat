@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WhatsApp Export → Bubble Chat</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>WhatsApp Export → Bubble Chat</h1>
+  </header>
+
+  <main>
+    <section class="controls">
+      <label>
+        Nama saya (untuk align kanan):
+        <input id="myName" placeholder="Contoh: Raffi" />
+      </label>
+
+      <label class="file-label">
+        Pilih file export WhatsApp (.txt):
+        <input id="fileInput" type="file" accept=".txt,text/plain" />
+      </label>
+
+      <div class="buttons">
+        <button id="clearBtn">Bersihkan</button>
+        <button id="downloadJsonBtn" disabled>Download JSON</button>
+      </div>
+    </section>
+
+    <section id="chatSection" class="chat-section">
+      <div id="chatContainer" class="chat-container"></div>
+    </section>
+
+    <section class="footer-note">
+      <small>Format yang didukung: WhatsApp exported text (mis. "23/6/2024, 21:15 - Nama: pesan"). Jika tanggal berbeda, parser mencoba menangkap beberapa pola umum.</small>
+    </section>
+  </main>
+
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
