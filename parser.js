@@ -1,4 +1,3 @@
-// Fungsi untuk mengganti nomor HP di notifikasi sistem/grup berdasarkan input user
 function replaceSystemTextWithAlias(systemText, phoneAliases) {
     let updatedText = systemText;
     for (const [phone, alias] of Object.entries(phoneAliases)) {
@@ -9,12 +8,11 @@ function replaceSystemTextWithAlias(systemText, phoneAliases) {
     return updatedText;
 }
 
-// Fungsi utama membedah baris teks chat dengan parameter aliases dinamis
 function parseChatLine(line, phoneAliases = {}) {
     line = line.trim();
     if (!line) return null;
 
-    // Regex standar ekspor WhatsApp: "DD/MM/YY HH.MM - Pengirim: Pesan"
+    // Regex disesuaikan dengan format log kamu: "DD/MM/YY HH.MM - Pengirim: Pesan"
     const pattern = /^(\d{2}\/\d{2}\/\d{2})\s(\d{2}\.\d{2})\s-\s([^:]+)(?::\s(.*))?$/;
     const parsed = line.match(pattern);
 
@@ -24,7 +22,7 @@ function parseChatLine(line, phoneAliases = {}) {
         let sender = parsed[3];
         let message = parsed[4] || '';
 
-        // Jika tidak ada pesan (:), anggap sebagai pesan sistem grup
+        // Jika tidak ada isi pesan setelah titik dua, anggap sebagai log sistem grup
         if (!parsed[4] && !sender.includes(':')) {
             return {
                 type: 'system',
@@ -33,19 +31,19 @@ function parseChatLine(line, phoneAliases = {}) {
             };
         }
 
-        // Cek indikator edit pesan
+        // Cek apakah pesan pernah diedit
         let isEdited = false;
         if (message.includes('<Pesan ini diedit>')) {
             isEdited = true;
             message = message.replace('<Pesan ini diedit>', '').trim();
         }
 
-        // Terapkan nama alias secara dinamis jika ada di objek inputan user
+        // Ubah nomor ke nama panggilan jika ada di daftar alias
         if (phoneAliases[sender]) {
             sender = phoneAliases[sender];
         }
 
-        // Klasifikasi posisi bubble (kanan jika Anda/Raffi)
+        // Klasifikasi: Jika namanya mengandung 'anda' atau 'raffi' masuk ke kanan (outgoing)
         const isMyChat = (sender.toLowerCase() === 'anda' || sender.toLowerCase().includes('raffi'));
         
         return {
@@ -59,5 +57,9 @@ function parseChatLine(line, phoneAliases = {}) {
         };
     }
 
-    return null;
+    // Jika baris teks tidak cocok dengan format regex chat baru (berarti baris enter/multiline)
+    return {
+        type: 'multiline',
+        text: line
+    };
 }
