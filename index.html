@@ -1,44 +1,308 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WhatsApp Export → Bubble Chat</title>
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Chat Viewer - Syarat x Tigpad</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #efeae2;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header Area */
+        .header-panel {
+            background-color: #008069;
+            padding: 15px 20px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .header-panel h2 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .file-input-wrapper {
+            margin-top: 8px;
+        }
+
+        .btn-upload {
+            padding: 6px 15px;
+            background: #ffffff;
+            color: #008069;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        /* Chat Container */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Divider Tanggal & Pesan Sistem */
+        .date-divider {
+            align-self: center;
+            background-color: #ffffff;
+            color: #54656f;
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 7px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .system-bubble {
+            align-self: center;
+            background-color: #ffe596;
+            color: #584c27;
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 7px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+            max-width: 85%;
+            text-align: center;
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+
+        /* Bubble Chat */
+        .chat-bubble {
+            max-width: 75%;
+            padding: 6px 10px 7px 10px;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 1px 1.5px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            word-wrap: break-word;
+        }
+
+        .chat-bubble.incoming {
+            background-color: #ffffff;
+            align-self: flex-start;
+            border-top-left-radius: 0;
+        }
+
+        .chat-bubble.outgoing {
+            background-color: #d9fdd3;
+            align-self: flex-end;
+            border-top-right-radius: 0;
+        }
+
+        /* Komponen di dalam Bubble */
+        .sender-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #00a884;
+            margin-bottom: 3px;
+        }
+
+        .message-content {
+            font-size: 14.2px;
+            color: #111b21;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .media-placeholder {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #00a884;
+            padding: 6px 10px;
+            margin: 4px 0;
+            font-size: 13px;
+            color: #54656f;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .bubble-meta {
+            font-size: 10px;
+            color: #667781;
+            align-self: flex-end;
+            margin-top: 3px;
+            margin-left: 20px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .tag-edited {
+            font-style: italic;
+            color: #8696a0;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>WhatsApp Export → Bubble Chat</h1>
-  </header>
 
-  <main>
-    <section class="controls">
-      <label>
-        Nama saya (untuk align kanan):
-        <input id="myName" placeholder="Contoh: Raffi" />
-      </label>
+    <div class="header-panel">
+        <h2>WhatsApp Chat Log Viewer</h2>
+        <div class="file-input-wrapper">
+            <input type="file" id="uploadTxt" class="btn-upload" accept=".txt">
+        </div>
+    </div>
 
-      <label class="file-label">
-        Pilih file export WhatsApp (.txt):
-        <input id="fileInput" type="file" accept=".txt,text/plain" />
-      </label>
+    <div class="chat-area" id="chatArea">
+        <div class="system-bubble">Silakan pilih file (.txt) hasil export chat kamu untuk memunculkan bubble chat otomatis.</div>
+    </div>
 
-      <div class="buttons">
-        <button id="clearBtn">Bersihkan</button>
-        <button id="downloadJsonBtn" disabled>Download JSON</button>
-      </div>
-    </section>
+    <script>
+        document.getElementById('uploadTxt').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-    <section id="chatSection" class="chat-section">
-      <div id="chatContainer" class="chat-container"></div>
-    </section>
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                renderChat(e.target.result);
+            };
+            reader.readAsText(file);
+        });
 
-    <section class="footer-note">
-      <small>Format yang didukung: WhatsApp exported text (mis. "23/6/2024, 21:15 - Nama: pesan"). Jika tanggal berbeda, parser mencoba menangkap beberapa pola umum.</small>
-    </section>
-  </main>
+        function renderChat(rawText) {
+            const container = document.getElementById('chatArea');
+            container.innerHTML = ''; // Kosongkan layar awal
 
-  <script src="parser.js"></script>
-  <script src="app.js"></script>
+            const lines = rawText.split('\n');
+            
+            // Format Regex disesuaikan dengan log WA: "19/06/26 23.19 - Nama: Pesan"
+            const pattern = /^(\d{2}\/\d{2}\/\d{2})\s(\d{2}\.\d{2})\s-\s([^:]+)(?::\s(.*))?$/;
+            
+            let trackingDate = null;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                const parsed = line.match(pattern);
+
+                if (parsed) {
+                    const date = parsed[1];
+                    const time = parsed[2];
+                    const sender = parsed[3];
+                    let message = parsed[4] || '';
+
+                    // Munculkan pembatas hari jika ganti tanggal
+                    if (date !== trackingDate) {
+                        createDateDivider(date);
+                        trackingDate = date;
+                    }
+
+                    // Deteksi jika ini adalah pesan sistem atau info grup
+                    if (!parsed[4] && !sender.includes(':')) {
+                        createSystemMsg(sender);
+                        return;
+                    }
+
+                    // Deteksi flag pesan diedit
+                    let isEdited = false;
+                    if (message.includes('<Pesan ini diedit>')) {
+                        isEdited = true;
+                        message = message.replace('<Pesan ini diedit>', '').trim();
+                    }
+
+                    // Penentuan posisi bubble (jika mengandung kata Raffi atau Anda ditaruh di kanan)
+                    const isMyChat = (sender.toLowerCase() === 'anda' || sender.toLowerCase().includes('raffi'));
+                    const alignment = isMyChat ? 'outgoing' : 'incoming';
+
+                    buildBubble(sender, message, time, alignment, isEdited);
+                } else {
+                    // Masuk ke sini jika chat berisi enter / baris baru
+                    appendMultiLine(line);
+                }
+            });
+        }
+
+        function createDateDivider(dateLabel) {
+            const area = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'date-divider';
+            div.innerText = dateLabel;
+            area.appendChild(div);
+        }
+
+        function createSystemMsg(text) {
+            const area = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'system-bubble';
+            div.innerText = text;
+            area.appendChild(div);
+        }
+
+        function buildBubble(name, text, time, side, edited) {
+            const area = document.getElementById('chatArea');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${side}`;
+
+            // Nama muncul hanya untuk orang lain (incoming)
+            if (side === 'incoming') {
+                const title = document.createElement('div');
+                title.className = 'sender-title';
+                title.innerText = name;
+                bubble.appendChild(title);
+            }
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message-content';
+
+            // Cek jika pesan berupa kiriman media file/stiker/video
+            if (text.includes('file terlampir') || text.includes('tidak disertakan')) {
+                const mediaBox = document.createElement('div');
+                mediaBox.className = 'media-placeholder';
+                mediaBox.innerHTML = `📁 <span>${text}</span>`;
+                msgDiv.appendChild(mediaBox);
+            } else {
+                msgDiv.innerText = text;
+            }
+            
+            bubble.appendChild(msgDiv);
+
+            // Jam & Status edit
+            const meta = document.createElement('div');
+            meta.className = 'bubble-meta';
+            meta.innerText = time;
+            if (edited) {
+                const editTag = document.createElement('span');
+                editTag.className = 'tag-edited';
+                editTag.innerText = '(diedit)';
+                meta.prepend(editTag);
+            }
+            bubble.appendChild(meta);
+
+            area.appendChild(bubble);
+            area.scrollTop = area.scrollHeight; // Geser otomatis ke chat paling bawah
+        }
+
+        function appendMultiLine(text) {
+            const area = document.getElementById('chatArea');
+            const lastMessage = area.querySelector('.chat-bubble:last-child .message-content');
+            if (lastMessage) {
+                lastMessage.innerText += `\n${text}`;
+            }
+        }
+    </script>
 </body>
 </html>
